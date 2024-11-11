@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRUD Mahasiswa</title>
+</head>
+<body>
+<h1>CRUD Mahasiswa</h1>
+<form id="form-mahasiswa">
+    <input type="text" id="nim" placeholder="NIM" required><br>
+    <input type="text" id="nama" placeholder="Nama" required><br>
+    <input type="number" step="0.01" id="ipk" placeholder="IPK" required><br>
+    <button type="submit" id="add-button">Tambah Mahasiswa</button>
+    <button type="submit" id="update-button" style="display: none;">Update Mahasiswa</button>
+</form>
+
+<h2>Daftar Mahasiswa</h2>
+<table border="1">
+  <thead>
+    <tr>
+      <th>NIM</th>
+      <th>Nama</th>
+      <th>IPK</th>
+      <th>Aksi</th>
+    </tr>
+  </thead>
+  <tbody id="mahasiswa-table"></tbody>
+</table>
+
+<script>
+  const formMahasiswa = document.getElementById('form-mahasiswa');
+  const nimInput = document.getElementById('nim');
+  const namaInput = document.getElementById('nama');
+  const ipkInput = document.getElementById('ipk');
+  const mahasiswaTable = document.getElementById('mahasiswa-table');
+  const updateButton = document.getElementById('update-button');
+  const addButton = document.getElementById('add-button');
+  let isUpdateMode = false;
+  let currentNim = '';
+
+  // Fetch and Display Mahasiswa Data
+  async function fetchMahasiswa() {
+    const response = await fetch('/api/mahasiswa');
+    const data = await response.json();
+    mahasiswaTable.innerHTML = data.map(m => ` 
+      <tr>
+        <td>${m.nim}</td>
+        <td>${m.nama}</td>
+        <td>${m.ipk}</td>
+        <td>
+          <button onclick="editMahasiswa('${m.nim}')">Edit</button>
+          <button onclick="deleteMahasiswa('${m.nim}')">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+
+  formMahasiswa.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nim = nimInput.value;
+    const nama = namaInput.value;
+    const ipk = ipkInput.value;
+
+    if (isUpdateMode) {
+      await fetch(`/api/mahasiswa/${currentNim}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nim: currentNim, nama, ipk }),
+      });
+      isUpdateMode = false;
+      updateButton.style.display = 'none';  
+      addButton.style.display = 'inline';  
+
+      nimInput.removeAttribute('readonly');  
+    } else {
+      await fetch('/api/mahasiswa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nim, nama, ipk }),
+      });
+    }
+
+    nimInput.value = '';
+    namaInput.value = '';
+    ipkInput.value = '';
+    fetchMahasiswa();
+  });
+
+  // Edit Mahasiswa
+  window.editMahasiswa = async (nim) => {
+    const response = await fetch('/api/mahasiswa');
+    const data = await response.json();
+    const mahasiswa = data.find(m => m.nim === nim);
+
+    if (mahasiswa) {
+      nimInput.value = mahasiswa.nim;  
+      namaInput.value = mahasiswa.nama;
+      ipkInput.value = mahasiswa.ipk;
+
+      isUpdateMode = true;
+      currentNim = nim;
+      updateButton.style.display = 'inline'; 
+      addButton.style.display = 'none';  
+      nimInput.setAttribute('readonly', 'readonly');  
+    }
+  };
+
+  window.deleteMahasiswa = async (nim) => {
+    if (confirm(`Hapus data mahasiswa dengan NIM ${nim}?`)) {
+      await fetch(`/api/mahasiswa/${nim}`, { method: 'DELETE' });
+      fetchMahasiswa();
+    }
+  };
+  fetchMahasiswa();
+</script>
+</body>
+</html>
